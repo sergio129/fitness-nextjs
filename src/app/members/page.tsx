@@ -1,6 +1,7 @@
 ﻿"use client"
 
 import { useState } from "react"
+import { AuthWrapper } from "@/components/AuthWrapper"
 import { ProtectedRoute } from "@/components/ProtectedRoute"
 import { useMembers } from "@/hooks/useMembers"
 import { MembershipType } from "@/types"
@@ -218,14 +219,15 @@ export default function MembersPage() {
   }
 
   return (
-    <ProtectedRoute>
-      <MembersLayout>
-        <div className="space-y-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Afiliados</h1>
-            <p className="text-gray-600">Gestión de miembros del gimnasio</p>
-          </div>
+    <AuthWrapper>
+      <ProtectedRoute>
+        <MembersLayout>
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Afiliados</h1>
+              <p className="text-gray-600">Gestión de miembros del gimnasio</p>
+            </div>
           <button
             onClick={() => setShowModal(true)}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700"
@@ -520,5 +522,6 @@ export default function MembersPage() {
       )}
       </MembersLayout>
     </ProtectedRoute>
+    </AuthWrapper>
   )
 }
