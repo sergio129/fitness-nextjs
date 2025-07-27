@@ -22,13 +22,14 @@ function verifyToken(request: NextRequest) {
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     verifyToken(request)
 
     const data = await request.json()
-    const memberId = params.id
+    const resolvedParams = await params
+    const memberId = resolvedParams.id
 
     // Validar campos requeridos
     if (!data.firstName || !data.lastName || !data.document) {
@@ -93,12 +94,13 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     verifyToken(request)
 
-    const memberId = params.id
+    const resolvedParams = await params
+    const memberId = resolvedParams.id
 
     // Verificar si el miembro existe
     const existingMember = await prisma.member.findUnique({
@@ -130,13 +132,14 @@ export async function DELETE(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     verifyToken(request)
 
     const data = await request.json()
-    const memberId = params.id
+    const resolvedParams = await params
+    const memberId = resolvedParams.id
 
     if (data.action === "toggle_status") {
       // Verificar si el miembro existe
