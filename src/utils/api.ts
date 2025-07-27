@@ -81,6 +81,11 @@ class ApiClient {
       method: "DELETE"
     })
   }
+
+  // Dashboard
+  async getDashboard() {
+    return this.request("/dashboard")
+  }
 }
 
 export const apiClient = new ApiClient()
