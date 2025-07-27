@@ -1,15 +1,15 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import { PlusIcon, EyeIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { AuthWrapper } from '@/components/AuthWrapper';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { useMembers } from '@/hooks/useMembers';
-import { Member } from '@/types';
+import { MembershipType } from '@/types';
 
 // Componente Layout específico para Members
-function MembersLayout({ children }: { readonly children: React.ReactNode }) {
+function MembersLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
@@ -137,13 +137,37 @@ function MembersLayout({ children }: { readonly children: React.ReactNode }) {
   );
 }
 
+interface Member {
+  id: string;
+  firstName: string;
+  lastName: string;
+  document: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  birthDate?: string;
+  registrationDate: string;
+  membershipType: 'MONTHLY' | 'ANNUAL';
+  lastPaymentDate?: string;
+  nextPaymentDate?: string;
+  isActive: boolean;
+  monthlyFee: number;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 function Members() {
-  const { members, loading, fetchMembers, deleteMember, toggleMemberStatus } = useMembers();
+  const { members, loading, error, fetchMembers, deleteMember, toggleMemberStatus } = useMembers();
   const [showForm, setShowForm] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+
+  useEffect(() => {
+    fetchMembers();
+  }, [fetchMembers]);
 
   const handleCreateMember = () => {
     setSelectedMember(null);
@@ -196,7 +220,7 @@ function Members() {
     }).format(amount);
   };
 
-  const filteredMembers = members.filter((member: Member) => {
+  const filteredMembers = members.filter(member => {
     const matchesSearch = 
       member.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       member.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -306,7 +330,7 @@ function Members() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredMembers.map((member: Member) => (
+                      {filteredMembers.map((member) => (
                         <tr key={member.id}>
                           <td>
                             <div>

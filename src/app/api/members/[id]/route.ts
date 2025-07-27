@@ -127,3 +127,51 @@ export async function DELETE(
     )
   }
 }
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    verifyToken(request)
+
+    const data = await request.json()
+    const memberId = params.id
+
+    if (data.action === "toggle_status") {
+      // Verificar si el miembro existe
+      const existingMember = await prisma.member.findUnique({
+        where: { id: memberId }
+      })
+
+      if (!existingMember) {
+        return NextResponse.json(
+          { error: "Afiliado no encontrado" },
+          { status: 404 }
+        )
+      }
+
+      // Cambiar el estado del miembro
+      const member = await prisma.member.update({
+        where: { id: memberId },
+        data: {
+          isActive: !existingMember.isActive
+        }
+      })
+
+      return NextResponse.json(member)
+    }
+
+    return NextResponse.json(
+      { error: "Acción no válida" },
+      { status: 400 }
+    )
+
+  } catch (error: any) {
+    console.error("Error en PATCH member:", error)
+    return NextResponse.json(
+      { error: error.message || "Error interno del servidor" },
+      { status: error.message === "Token no proporcionado" || error.message === "Token inválido" ? 401 : 500 }
+    )
+  }
+}

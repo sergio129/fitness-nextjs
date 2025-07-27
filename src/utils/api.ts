@@ -63,6 +63,13 @@ class ApiClient {
     })
   }
 
+  async toggleMemberStatus(id: string) {
+    return this.request(`/members/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ action: "toggle_status" })
+    })
+  }
+
   // Payments
   async getPayments(params?: any) {
     const searchParams = new URLSearchParams(params)

@@ -1,6 +1,6 @@
 ﻿"use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { apiClient } from "@/utils/api"
 import { Member, PaginationResponse } from "@/types"
 
@@ -9,7 +9,7 @@ export function useMembers(params?: any) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchMembers = async () => {
+  const fetchMembers = useCallback(async () => {
     try {
       setLoading(true)
       const response = await apiClient.getMembers(params)
@@ -20,11 +20,11 @@ export function useMembers(params?: any) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [params])
 
   useEffect(() => {
     fetchMembers()
-  }, [JSON.stringify(params)])
+  }, [fetchMembers])
 
   const createMember = async (memberData: any) => {
     try {
@@ -59,14 +59,27 @@ export function useMembers(params?: any) {
     }
   }
 
+  const toggleMemberStatus = async (id: string) => {
+    try {
+      await apiClient.toggleMemberStatus(id)
+      await fetchMembers()
+      return true
+    } catch (err: any) {
+      setError(err.message)
+      return false
+    }
+  }
+
   return {
     members: data?.members || [],
     pagination: data?.pagination,
     loading,
     error,
     refetch: fetchMembers,
+    fetchMembers,
     createMember,
     updateMember,
-    deleteMember
+    deleteMember,
+    toggleMemberStatus
   }
 }
