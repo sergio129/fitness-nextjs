@@ -90,3 +90,14 @@ enum AlertType {
   PAYMENT_OVERDUE
   MEMBER_INACTIVE
 }
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      String   @default("user") // user, admin, etc.
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
