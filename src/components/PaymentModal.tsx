@@ -90,10 +90,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ member, onSuccess, onClose 
           paymentType: data.paymentType,
           description: data.description,
           paymentDate: data.paymentDate
-        }),
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        })
       });
       
       toast.success('Pago registrado exitosamente');

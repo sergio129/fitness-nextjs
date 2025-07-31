@@ -115,8 +115,8 @@ export async function POST(request: NextRequest) {
         memberId: data.memberId,
         amount: data.amount,
         paymentType: data.paymentType,
-        notes: data.notes || null,
-        paymentDate: new Date()
+        description: data.description || null,
+        paymentDate: data.paymentDate ? new Date(data.paymentDate) : new Date()
       },
       include: {
         member: {

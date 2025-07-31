@@ -5,6 +5,7 @@
 class ApiClient {
   private getAuthHeaders() {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null
+    console.log('Token disponible:', !!token)
     return {
       "Content-Type": "application/json",
       ...(token && { Authorization: `Bearer ${token}` })
@@ -14,15 +15,26 @@ class ApiClient {
   async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${API_BASE_URL}/api${endpoint}`
     
+    // Merge headers correctly
+    const headers = {
+      ...this.getAuthHeaders(),
+      ...options.headers
+    }
+    
     const config: RequestInit = {
-      headers: this.getAuthHeaders(),
-      ...options
+      ...options,
+      headers
     }
 
+    console.log('Enviando petición a:', url)
+    console.log('Headers finales:', headers)
+    console.log('Método:', config.method || 'GET')
+    
     const response = await fetch(url, config)
     
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: "Error desconocido" }))
+      console.error('Error en la respuesta:', error)
       throw new Error(error.message || `HTTP ${response.status}`)
     }
 
