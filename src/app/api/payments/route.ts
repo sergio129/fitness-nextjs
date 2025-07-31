@@ -1,11 +1,7 @@
 ﻿import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import jwt from "jsonwebtoken"
-
-const JWT_SECRET = process.env.JWT_SECRET
-if (!JWT_SECRET) {
-  throw new Error("JWT_SECRET no está configurado")
-}
+import { getJWTSecret } from "@/lib/jwt"
 
 function verifyToken(request: NextRequest) {
   const authHeader = request.headers.get("authorization")
@@ -17,7 +13,7 @@ function verifyToken(request: NextRequest) {
   const token = authHeader.substring(7)
   
   try {
-    return jwt.verify(token, JWT_SECRET!) as any
+    return jwt.verify(token, getJWTSecret()) as any
   } catch (error) {
     throw new Error("Token inválido")
   }

@@ -2,11 +2,7 @@
 import bcrypt from "bcryptjs"
 import jwt from "jsonwebtoken"
 import { prisma } from "@/lib/prisma"
-
-const JWT_SECRET = process.env.JWT_SECRET
-if (!JWT_SECRET) {
-  throw new Error("JWT_SECRET no está configurado")
-}
+import { getJWTSecret } from "@/lib/jwt"
 
 export async function POST(request: NextRequest) {
   try {
@@ -42,16 +38,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Generar token JWT
-    if (!JWT_SECRET) {
-      throw new Error("JWT_SECRET no está configurado")
-    }
+    const jwtSecret = getJWTSecret()
 
     const token = jwt.sign(
       { 
         adminId: admin.id, 
         email: admin.email 
       },
-      JWT_SECRET,
+      jwtSecret,
       { expiresIn: "7d" }
     )
 

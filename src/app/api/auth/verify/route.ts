@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import jwt from "jsonwebtoken"
-
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key"
+import { getJWTSecret } from "@/lib/jwt"
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,7 +16,7 @@ export async function GET(request: NextRequest) {
     const token = authHeader.substring(7)
     
     try {
-      const decoded = jwt.verify(token, JWT_SECRET!) as any
+      const decoded = jwt.verify(token, getJWTSecret()) as any
       
       return NextResponse.json({
         isValid: true,
