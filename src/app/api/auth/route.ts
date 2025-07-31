@@ -2,9 +2,18 @@
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { prisma } from '@/lib/prisma'
+import { getJWTSecret } from '@/lib/jwt'
 
 export async function POST(request: NextRequest) {
   try {
+    // Verificar configuración de base de datos
+    if (!prisma) {
+      return NextResponse.json(
+        { message: 'Base de datos no configurada' },
+        { status: 500 }
+      )
+    }
+
     const { email, password } = await request.json()
 
     if (!email || !password) {
@@ -36,13 +45,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generar JWT
-    const jwtSecret = process.env.JWT_SECRET
-    if (!jwtSecret) {
-      return NextResponse.json(
-        { message: 'Configuración del servidor incorrecta' },
-        { status: 500 }
-      )
-    }
+    const jwtSecret = getJWTSecret()
 
     const token = jwt.sign(
       { adminId: admin.id },
@@ -61,8 +64,15 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Error en login:', error)
+    
+    // Proporcionar más detalles del error en desarrollo
+    let errorMessage = 'Error interno del servidor'
+    if (process.env.NODE_ENV === 'development') {
+      errorMessage = `Error interno del servidor: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
+    
     return NextResponse.json(
-      { message: 'Error interno del servidor' },
+      { message: errorMessage },
       { status: 500 }
     )
   }

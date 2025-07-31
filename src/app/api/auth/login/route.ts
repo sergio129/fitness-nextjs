@@ -6,9 +6,9 @@ import { getJWTSecret } from "@/lib/jwt"
 
 export async function POST(request: NextRequest) {
   try {
-    const { username, password } = await request.json()
+    const { email, password } = await request.json()
 
-    if (!username || !password) {
+    if (!email || !password) {
       return NextResponse.json(
         { error: "Email y password son requeridos" },
         { status: 400 }
@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
 
     // Buscar el admin en la base de datos
     const admin = await prisma.admin.findUnique({
-      where: { email: username }
+      where: { email: email }
     })
 
     if (!admin) {
