@@ -150,7 +150,7 @@ export default function PaymentsPage() {
     search
   })
   
-  const { members, loading: membersLoading } = useMembers({})
+  const { members, loading: membersLoading } = useMembers()
 
   const filteredPayments = payments.filter(payment => {
     if (filterType === "all") return true
