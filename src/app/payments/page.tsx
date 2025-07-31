@@ -178,7 +178,7 @@ const Payments: React.FC = () => {
   useEffect(() => {
     loadPayments();
     fetchMembers();
-  }, [loadPayments, fetchMembers]);
+  }, []); // Eliminar dependencias para evitar bucle infinito
 
   useEffect(() => {
     setMembers(allMembers);

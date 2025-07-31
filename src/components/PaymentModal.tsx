@@ -38,7 +38,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ member, onSuccess, onClose 
     // Valores por defecto
     reset({
       amount: Number(member.monthlyFee),
-      paymentType: member.membershipType === 'MONTHLY' ? 'MONTHLY' : 'ANNUAL',
+      paymentType: (member.membershipType === 'MONTHLY' ? 'MONTHLY' : 'ANNUAL') as PaymentType,
       description: '',
       paymentDate: new Date().toISOString().split('T')[0]
     });

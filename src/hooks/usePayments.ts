@@ -48,12 +48,22 @@ export function usePayments(params?: any) {
     }
   }
 
+  const getPayments = async (params?: any) => {
+    try {
+      return await apiClient.getPayments(params)
+    } catch (err: any) {
+      setError(err.message)
+      throw err
+    }
+  }
+
   return {
     payments: data?.payments || [],
     pagination: data?.pagination,
     loading,
     error,
     refetch: fetchPayments,
+    getPayments,
     createPayment,
     deletePayment
   }
