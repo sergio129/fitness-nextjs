@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   HomeIcon,
   UsersIcon,
@@ -29,6 +30,7 @@ interface SidebarContentProps {
 const DashboardLayout: React.FC<LayoutProps> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
+  const { logout } = useAuth();
 
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
@@ -40,8 +42,7 @@ const DashboardLayout: React.FC<LayoutProps> = ({ children }) => {
   const isCurrentPath = (path: string) => pathname === path;
 
   const handleLogout = () => {
-    // TODO: Implementar logout
-    console.log('Logout');
+    logout();
   };
 
   return (
