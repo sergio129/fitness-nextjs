@@ -117,13 +117,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Crear el pago
+    const paymentDate = data.paymentDate ? new Date(data.paymentDate) : new Date()
+    
     const payment = await prisma.payment.create({
       data: {
         memberId: data.memberId,
         amount: data.amount,
         paymentType: data.paymentType,
         description: data.description || null,
-        paymentDate: data.paymentDate ? new Date(data.paymentDate) : new Date()
+        paymentDate: paymentDate
       },
       include: {
         member: {
@@ -137,20 +139,24 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // Si es un pago de membresía, actualizar la fecha del próximo pago
-    if (data.paymentType === "MEMBERSHIP") {
-      const nextPaymentDate = new Date()
+    // Si es un pago de membresía (MONTHLY o ANNUAL), actualizar las fechas del miembro
+    if (data.paymentType === "MONTHLY" || data.paymentType === "ANNUAL") {
+      const nextPaymentDate = new Date(paymentDate)
       
-      if (member.membershipType === "ANNUAL") {
+      if (data.paymentType === "ANNUAL") {
+        // Para pagos anuales, agregar 1 año
         nextPaymentDate.setFullYear(nextPaymentDate.getFullYear() + 1)
       } else {
+        // Para pagos mensuales, agregar 1 mes
         nextPaymentDate.setMonth(nextPaymentDate.getMonth() + 1)
       }
 
+      // Actualizar el miembro con las nuevas fechas
       await prisma.member.update({
         where: { id: data.memberId },
         data: { 
-          nextPaymentDate,
+          lastPaymentDate: paymentDate,
+          nextPaymentDate: nextPaymentDate,
           isActive: true // Reactivar el miembro si estaba inactivo
         }
       })
