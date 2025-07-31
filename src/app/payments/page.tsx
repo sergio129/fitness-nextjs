@@ -1,10 +1,14 @@
-﻿"use client"
+"use client"
 
-import { useState } from "react"
+import React, { useEffect, useState, useCallback } from 'react';
+import { toast } from 'react-toastify';
+import { MagnifyingGlassIcon, CurrencyDollarIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { usePayments } from "@/hooks/usePayments"
 import { useMembers } from "@/hooks/useMembers"
-import { PaymentType } from "@/types"
-import { Plus, Search, Calendar, DollarSign, User, FileText } from "lucide-react"
+import { Payment, Member } from "@/types"
+import { AuthWrapper } from "@/components/AuthWrapper"
+import { ProtectedRoute } from "@/components/ProtectedRoute"
+import PaymentModal from '@/components/PaymentModal';
 
 // Layout con navegación completa como el repositorio original
 function PaymentsLayout({ children }: { children: React.ReactNode }) {
@@ -135,346 +139,389 @@ function PaymentsLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function PaymentsPage() {
-  const [search, setSearch] = useState("")
-  const [filterType, setFilterType] = useState<string>("all")
-  const [showModal, setShowModal] = useState(false)
-  const [formData, setFormData] = useState({
-    memberId: "",
-    amount: "",
-    paymentType: PaymentType.MEMBERSHIP,
-    notes: ""
-  })
+const Payments: React.FC = () => {
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
-  const { payments, loading: paymentsLoading, error: paymentsError, createPayment } = usePayments({
-    search
-  })
-  
-  const { members, loading: membersLoading } = useMembers()
+  const { getPayments } = usePayments();
+  const { members: allMembers, loading: membersLoading, fetchMembers } = useMembers();
+
+  const loadPayments = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const response = await getPayments({
+        page: currentPage,
+        limit: 20
+      });
+      // Manejar tanto array simple como respuesta paginada
+      if (Array.isArray(response)) {
+        setPayments(response);
+        setTotalPages(1);
+      } else {
+        setPayments(response.data || response.payments || []);
+        setTotalPages(Math.ceil((response.pagination?.total || response.total || 0) / (response.pagination?.limit || 20)));
+      }
+    } catch (error) {
+      console.error('Error cargando pagos:', error);
+      toast.error('Error al cargar los pagos');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [currentPage, getPayments]);
+
+  useEffect(() => {
+    loadPayments();
+    fetchMembers();
+  }, [loadPayments, fetchMembers]);
+
+  useEffect(() => {
+    setMembers(allMembers);
+  }, [allMembers]);
+
+  const handleNewPayment = (member: Member) => {
+    setSelectedMember(member);
+    setShowPaymentModal(true);
+  };
+
+  const handlePaymentSuccess = () => {
+    setShowPaymentModal(false);
+    setSelectedMember(null);
+    loadPayments();
+    fetchMembers(); // Recargar para actualizar fechas de pago
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('es-CO', {
+      style: 'currency',
+      currency: 'COP',
+      minimumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  const getPaymentTypeName = (type: string) => {
+    switch (type) {
+      case 'MONTHLY':
+        return 'Mensual';
+      case 'ANNUAL':
+        return 'Anual';
+      case 'REGISTRATION':
+        return 'Inscripción';
+      case 'PENALTY':
+        return 'Multa';
+      case 'OTHER':
+        return 'Otro';
+      default:
+        return type;
+    }
+  };
 
   const filteredPayments = payments.filter(payment => {
-    if (filterType === "all") return true
-    return payment.paymentType === filterType
-  })
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    if (!searchTerm) return true;
     
-    const data = {
-      memberId: formData.memberId,
-      amount: Number(formData.amount),
-      paymentType: formData.paymentType as PaymentType,
-      notes: formData.notes || undefined
-    }
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      payment.member?.firstName?.toLowerCase().includes(searchLower) ||
+      payment.member?.lastName?.toLowerCase().includes(searchLower) ||
+      payment.member?.document?.toLowerCase().includes(searchLower) ||
+      payment.description?.toLowerCase().includes(searchLower)
+    );
+  });
 
-    const success = await createPayment(data)
+  const filteredMembers = members.filter(member => {
+    if (!searchTerm) return true;
     
-    if (success) {
-      setShowModal(false)
-      resetForm()
-    }
-  }
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      member.firstName.toLowerCase().includes(searchLower) ||
+      member.lastName.toLowerCase().includes(searchLower) ||
+      member.document.toLowerCase().includes(searchLower) ||
+      member.email?.toLowerCase().includes(searchLower)
+    );
+  });
 
-  const resetForm = () => {
-    setFormData({
-      memberId: "",
-      amount: "",
-      paymentType: PaymentType.MEMBERSHIP,
-      notes: ""
-    })
-  }
-
-  const getPaymentTypeLabel = (type: PaymentType) => {
-    switch (type) {
-      case PaymentType.MEMBERSHIP:
-        return "Membresía"
-      case PaymentType.PRODUCT:
-        return "Producto"
-      case PaymentType.SERVICE:
-        return "Servicio"
-      default:
-        return type
-    }
-  }
-
-  const getPaymentTypeColor = (type: PaymentType) => {
-    switch (type) {
-      case PaymentType.MEMBERSHIP:
-        return "bg-blue-100 text-blue-800"
-      case PaymentType.PRODUCT:
-        return "bg-green-100 text-green-800"
-      case PaymentType.SERVICE:
-        return "bg-purple-100 text-purple-800"
-      default:
-        return "bg-gray-100 text-gray-800"
-    }
+  if (isLoading || membersLoading) {
+    return (
+      <AuthWrapper>
+        <ProtectedRoute>
+          <PaymentsLayout>
+            <div className="flex justify-center items-center h-64">
+              <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+            </div>
+          </PaymentsLayout>
+        </ProtectedRoute>
+      </AuthWrapper>
+    );
   }
 
   return (
-    <PaymentsLayout>
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Gestión de Pagos</h1>
-            <p className="text-gray-600">Administra los pagos de afiliados del gimnasio</p>
-          </div>
-          <button
-            onClick={() => setShowModal(true)}
-            className="bg-green-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-green-700"
-          >
-            <Plus className="w-4 h-4" />
-            Registrar Pago
-          </button>
-        </div>
-
-        {/* Filtros */}
-        <div className="bg-white p-4 rounded-lg shadow">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Buscar por afiliado..."
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
+    <AuthWrapper>
+      <ProtectedRoute>
+        <PaymentsLayout>
+          <div className="space-y-6">
+            {/* Header */}
+            <div className="flex justify-between items-center">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Gestión de Pagos</h1>
+                <p className="text-gray-600">Administra los pagos de afiliados del gimnasio</p>
               </div>
             </div>
-            <select
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
-            >
-              <option value="all">Todos los tipos</option>
-              <option value={PaymentType.MEMBERSHIP}>Membresías</option>
-              <option value={PaymentType.PRODUCT}>Productos</option>
-              <option value={PaymentType.SERVICE}>Servicios</option>
-            </select>
-          </div>
-        </div>
 
-        {/* Estadísticas */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex items-center">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <DollarSign className="w-6 h-6 text-green-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total del Mes</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  ${filteredPayments
-                    .filter(p => {
-                      const paymentDate = new Date(p.paymentDate)
-                      const now = new Date()
-                      return paymentDate.getMonth() === now.getMonth() && 
-                             paymentDate.getFullYear() === now.getFullYear()
-                    })
-                    .reduce((sum, p) => sum + Number(p.amount), 0)
-                    .toLocaleString()}
+            {/* Nota sobre pagos electrónicos */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-center">
+                <CurrencyDollarIcon className="h-5 w-5 text-blue-600 mr-2" />
+                <p className="text-blue-800">
+                  <strong>Nota:</strong> Los pagos electrónicos no están implementados aún. 
+                  Actualmente solo se soportan pagos manuales registrados desde la plataforma.
                 </p>
               </div>
             </div>
-          </div>
 
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex items-center">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <FileText className="w-6 h-6 text-blue-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Pagos del Mes</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {filteredPayments.filter(p => {
-                    const paymentDate = new Date(p.paymentDate)
-                    const now = new Date()
-                    return paymentDate.getMonth() === now.getMonth() && 
-                           paymentDate.getFullYear() === now.getFullYear()
-                  }).length}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex items-center">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <User className="w-6 h-6 text-purple-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Promedio por Pago</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  ${filteredPayments.length > 0 
-                    ? (filteredPayments.reduce((sum, p) => sum + Number(p.amount), 0) / filteredPayments.length).toFixed(0)
-                    : 0}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Lista de Pagos */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          {paymentsLoading ? (
-            <div className="p-8 text-center">Cargando...</div>
-          ) : paymentsError ? (
-            <div className="p-8 text-center text-red-600">{paymentsError}</div>
-          ) : filteredPayments.length === 0 ? (
-            <div className="p-8 text-center text-gray-500">No se encontraron pagos</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Fecha
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Afiliado
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Tipo
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Monto
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Notas
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredPayments.map((payment) => (
-                    <tr key={payment.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center text-sm text-gray-900">
-                          <Calendar className="w-4 h-4 mr-2 text-gray-400" />
-                          {new Date(payment.paymentDate).toLocaleDateString()}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">
-                            {payment.member.firstName} {payment.member.lastName}
-                          </div>
-                          <div className="text-sm text-gray-500">{payment.member.document}</div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getPaymentTypeColor(payment.paymentType)}`}>
-                          {getPaymentTypeLabel(payment.paymentType)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          ${Number(payment.amount).toLocaleString()}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-gray-500 max-w-xs truncate">
-                          {payment.notes || "-"}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-11/12 md:w-1/2 lg:w-1/3 shadow-lg rounded-md bg-white">
-            <div className="mt-3">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">
-                Registrar Nuevo Pago
-              </h3>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Afiliado</label>
-                  <select
-                    required
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500"
-                    value={formData.memberId}
-                    onChange={(e) => setFormData({...formData, memberId: e.target.value})}
-                  >
-                    <option value="">Seleccionar afiliado...</option>
-                    {members.map((member) => (
-                      <option key={member.id} value={member.id}>
-                        {member.firstName} {member.lastName} - {member.document}
-                      </option>
-                    ))}
-                  </select>
-                  {membersLoading && (
-                    <p className="text-sm text-gray-500 mt-1">Cargando afiliados...</p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Tipo de Pago</label>
-                  <select
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500"
-                    value={formData.paymentType}
-                    onChange={(e) => setFormData({...formData, paymentType: e.target.value as PaymentType})}
-                  >
-                    <option value={PaymentType.MEMBERSHIP}>Membresía</option>
-                    <option value={PaymentType.PRODUCT}>Producto</option>
-                    <option value={PaymentType.SERVICE}>Servicio</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Monto</label>
+            {/* Buscador */}
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="relative flex-1">
+                  <MagnifyingGlassIcon className="h-5 w-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                   <input
-                    type="number"
-                    required
-                    min="0"
-                    step="0.01"
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500"
-                    value={formData.amount}
-                    onChange={(e) => setFormData({...formData, amount: e.target.value})}
+                    type="text"
+                    placeholder="Buscar por nombre, documento o descripción..."
+                    className="input pl-10"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
                   />
                 </div>
+              </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Notas (opcional)</label>
-                  <textarea
-                    rows={3}
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500"
-                    value={formData.notes}
-                    onChange={(e) => setFormData({...formData, notes: e.target.value})}
-                    placeholder="Detalles adicionales del pago..."
-                  />
-                </div>
-
-                <div className="flex justify-end gap-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowModal(false)
-                      resetForm()
-                    }}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700"
-                  >
-                    Registrar Pago
-                  </button>
-                </div>
-              </form>
+              {/* Tabla de afiliados para hacer pagos */}
+              <div className="mb-8">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Buscar Afiliado para Registrar Pago</h3>
+                {filteredMembers.length === 0 ? (
+                  <p className="text-gray-500 text-center py-4">No se encontraron afiliados</p>
+                ) : (
+                  <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Afiliado
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Documento
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Membresía
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Cuota
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Último Pago
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Próximo Pago
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Estado
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Acciones
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {filteredMembers.map((member) => {
+                            const isOverdue = member.nextPaymentDate && new Date(member.nextPaymentDate) < new Date();
+                            const isDueSoon = member.nextPaymentDate && 
+                              new Date(member.nextPaymentDate) <= new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+                            
+                            return (
+                              <tr key={member.id} className="hover:bg-gray-50">
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <div>
+                                    <p className="font-medium text-gray-900">
+                                      {member.firstName} {member.lastName}
+                                    </p>
+                                    {member.email && (
+                                      <p className="text-sm text-gray-500">{member.email}</p>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                                  {member.document}
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                    member.membershipType === 'MONTHLY' 
+                                      ? 'bg-blue-100 text-blue-800' 
+                                      : 'bg-purple-100 text-purple-800'
+                                  }`}>
+                                    {member.membershipType === 'MONTHLY' ? 'Mensual' : 'Anual'}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                                  {formatCurrency(Number(member.monthlyFee))}
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                                  {member.lastPaymentDate 
+                                    ? new Date(member.lastPaymentDate).toLocaleDateString('es-CO')
+                                    : 'Sin pagos'
+                                  }
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm">
+                                  {member.nextPaymentDate ? (
+                                    <span className={`${
+                                      isOverdue ? 'text-red-600 font-semibold' :
+                                      isDueSoon ? 'text-yellow-600 font-semibold' :
+                                      'text-gray-900'
+                                    }`}>
+                                      {new Date(member.nextPaymentDate).toLocaleDateString('es-CO')}
+                                    </span>
+                                  ) : '-'}
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                    member.isActive 
+                                      ? 'bg-green-100 text-green-800' 
+                                      : 'bg-red-100 text-red-800'
+                                  }`}>
+                                    {member.isActive ? 'Activo' : 'Inactivo'}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">
+                                  <button
+                                    onClick={() => handleNewPayment(member)}
+                                    className="btn btn-sm btn-primary"
+                                    title="Registrar pago"
+                                  >
+                                    <PlusIcon className="h-4 w-4 mr-1" />
+                                    Pago
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
+
+            {/* Historial de Pagos */}
+            <div className="bg-white rounded-lg shadow">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h3 className="text-lg font-medium text-gray-900">Historial de Pagos Recientes</h3>
+              </div>
+              
+              {filteredPayments.length === 0 ? (
+                <div className="text-center py-8">
+                  <CurrencyDollarIcon className="h-12 w-12 text-gray-300 mx-auto mb-2" />
+                  <p className="text-gray-500">No hay pagos registrados</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Fecha
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Afiliado
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Tipo
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Monto
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Descripción
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {filteredPayments.map((payment) => (
+                        <tr key={payment.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {new Date(payment.paymentDate).toLocaleDateString('es-CO')}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div>
+                              <p className="font-medium text-gray-900">
+                                {payment.member?.firstName} {payment.member?.lastName}
+                              </p>
+                              <p className="text-sm text-gray-500">
+                                {payment.member?.document}
+                              </p>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                            {getPaymentTypeName(payment.paymentType)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {formatCurrency(Number(payment.amount))}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-600">
+                            {payment.description || '-'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Paginación */}
+              {totalPages > 1 && (
+                <div className="px-6 py-3 border-t border-gray-200 flex justify-between items-center">
+                  <div className="text-sm text-gray-500">
+                    Página {currentPage} de {totalPages}
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1}
+                      className="btn btn-sm btn-outline"
+                    >
+                      Anterior
+                    </button>
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      disabled={currentPage === totalPages}
+                      className="btn btn-sm btn-outline"
+                    >
+                      Siguiente
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal de Pago */}
+            {showPaymentModal && selectedMember && (
+              <PaymentModal
+                member={selectedMember}
+                onSuccess={handlePaymentSuccess}
+                onClose={() => {
+                  setShowPaymentModal(false);
+                  setSelectedMember(null);
+                }}
+              />
+            )}
           </div>
-        </div>
-      )}
-    </PaymentsLayout>
-  )
-}
+        </PaymentsLayout>
+      </ProtectedRoute>
+    </AuthWrapper>
+  );
+};
+
+export default Payments;
