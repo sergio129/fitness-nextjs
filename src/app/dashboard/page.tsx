@@ -138,11 +138,22 @@ interface Dashboard {
   totalMembers: number;
   activeMembers: number;
   inactiveMembers: number;
+  newMembersThisMonth: number;
   monthlyPayments: number;
+  paymentsGrowth: number;
   monthlyRevenue: number;
+  revenueGrowth: number;
   averagePayment: number;
+  membershipRetention: number;
+  avgMonthlyFeeActive: number;
   recentPayments: Payment[];
   membersExpiringSoon: MemberAlert[];
+  membersExpiredOverdue: MemberAlert[];
+  paymentsByType: Array<{
+    paymentType: string;
+    _count: { id: number };
+    _sum: { amount: number };
+  }>;
 }
 
 interface Payment {
@@ -196,6 +207,34 @@ function DashboardPage() {
       currency: 'COP',
       minimumFractionDigits: 0,
     }).format(amount);
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('es-CO', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    });
+  };
+
+  const getDaysUntilExpiry = (dateString: string) => {
+    const today = new Date();
+    const expiryDate = new Date(dateString);
+    const diffTime = expiryDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
+  const getGrowthColor = (growth: number) => {
+    if (growth > 0) return 'text-green-600';
+    if (growth < 0) return 'text-red-600';
+    return 'text-gray-600';
+  };
+
+  const getGrowthIcon = (growth: number) => {
+    if (growth > 0) return '↗️';
+    if (growth < 0) return '↘️';
+    return '➡️';
   };
 
   const getPaymentTypeName = (type: string) => {
@@ -256,101 +295,272 @@ function DashboardPage() {
             <h1 className="text-2xl font-bold text-gray-900 mb-6">Dashboard</h1>
             
             {dashboard && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <div className="card">
-                  <h3 className="text-sm font-medium text-gray-600">Total Afiliados</h3>
-                  <p className="text-2xl font-bold text-gray-900">{dashboard.totalMembers || 0}</p>
-                </div>
-                
-                <div className="card">
-                  <h3 className="text-sm font-medium text-gray-600">Afiliados Activos</h3>
-                  <p className="text-2xl font-bold text-green-600">{dashboard.activeMembers || 0}</p>
-                </div>
-                
-                <div className="card">
-                  <h3 className="text-sm font-medium text-gray-600">Ingresos del Mes</h3>
-                  <p className="text-2xl font-bold text-blue-600">{formatCurrency(dashboard.monthlyRevenue || 0)}</p>
-                </div>
-                
-                <div className="card">
-                  <h3 className="text-sm font-medium text-gray-600">Pagos del Mes</h3>
-                  <p className="text-2xl font-bold text-purple-600">{dashboard.monthlyPayments || 0}</p>
-                </div>
-              </div>
-            )}
-
-            {/* Sección de miembros próximos a vencer */}
-            {dashboard?.membersExpiringSoon && dashboard.membersExpiringSoon.length > 0 && (
-              <div className="card mb-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">
-                  Próximos a Vencer
-                </h3>
-                <div className="space-y-3">
-                  {dashboard.membersExpiringSoon.slice(0, 5).map((member) => (
-                    <div key={member.id} className="flex justify-between items-center p-3 bg-yellow-50 rounded-lg">
+              <>
+                {/* Estadísticas principales */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                  <div className="card bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+                    <div className="flex items-center justify-between">
                       <div>
-                        <p className="font-medium text-gray-900">
-                          {member.firstName} {member.lastName}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          Doc: {member.document}
+                        <h3 className="text-sm font-medium text-blue-100">Total Afiliados</h3>
+                        <p className="text-3xl font-bold">{dashboard.totalMembers || 0}</p>
+                        <p className="text-xs text-blue-100 mt-1">
+                          Nuevos este mes: +{dashboard.newMembersThisMonth || 0}
                         </p>
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm font-medium text-yellow-800">
-                          {member.nextPaymentDate && new Date(member.nextPaymentDate).toLocaleDateString()}
+                      <div className="text-4xl opacity-20">👥</div>
+                    </div>
+                  </div>
+                  
+                  <div className="card bg-gradient-to-r from-green-500 to-green-600 text-white">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-sm font-medium text-green-100">Afiliados Activos</h3>
+                        <p className="text-3xl font-bold">{dashboard.activeMembers || 0}</p>
+                        <p className="text-xs text-green-100 mt-1">
+                          Retención: {dashboard.membershipRetention || 0}%
                         </p>
-                        <p className="text-xs text-gray-600">
-                          {formatCurrency(member.monthlyFee)}
+                      </div>
+                      <div className="text-4xl opacity-20">✅</div>
+                    </div>
+                  </div>
+                  
+                  <div className="card bg-gradient-to-r from-purple-500 to-purple-600 text-white">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-sm font-medium text-purple-100">Ingresos del Mes</h3>
+                        <p className="text-2xl font-bold">{formatCurrency(dashboard.monthlyRevenue || 0)}</p>
+                        <p className={`text-xs mt-1 ${dashboard.revenueGrowth >= 0 ? 'text-green-200' : 'text-red-200'}`}>
+                          {getGrowthIcon(dashboard.revenueGrowth)} {dashboard.revenueGrowth > 0 ? '+' : ''}{dashboard.revenueGrowth}% vs mes anterior
                         </p>
+                      </div>
+                      <div className="text-4xl opacity-20">💰</div>
+                    </div>
+                  </div>
+                  
+                  <div className="card bg-gradient-to-r from-orange-500 to-orange-600 text-white">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-sm font-medium text-orange-100">Pagos del Mes</h3>
+                        <p className="text-3xl font-bold">{dashboard.monthlyPayments || 0}</p>
+                        <p className={`text-xs mt-1 ${dashboard.paymentsGrowth >= 0 ? 'text-green-200' : 'text-red-200'}`}>
+                          {getGrowthIcon(dashboard.paymentsGrowth)} {dashboard.paymentsGrowth > 0 ? '+' : ''}{dashboard.paymentsGrowth}% vs mes anterior
+                        </p>
+                      </div>
+                      <div className="text-4xl opacity-20">📊</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Estadísticas adicionales */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                  <div className="card">
+                    <h3 className="text-sm font-medium text-gray-600 mb-2">Pago Promedio</h3>
+                    <p className="text-2xl font-bold text-gray-900">{formatCurrency(dashboard.averagePayment || 0)}</p>
+                  </div>
+                  
+                  <div className="card">
+                    <h3 className="text-sm font-medium text-gray-600 mb-2">Cuota Mensual Promedio</h3>
+                    <p className="text-2xl font-bold text-gray-900">{formatCurrency(dashboard.avgMonthlyFeeActive || 0)}</p>
+                  </div>
+                  
+                  <div className="card">
+                    <h3 className="text-sm font-medium text-gray-600 mb-2">Afiliados Inactivos</h3>
+                    <p className="text-2xl font-bold text-red-600">{dashboard.inactiveMembers || 0}</p>
+                  </div>
+                </div>
+
+                {/* Alertas importantes */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                  {/* Membresías vencidas */}
+                  {dashboard.membersExpiredOverdue && dashboard.membersExpiredOverdue.length > 0 && (
+                    <div className="card border-l-4 border-red-500">
+                      <div className="flex items-center mb-4">
+                        <div className="text-2xl mr-3">⚠️</div>
+                        <h3 className="text-lg font-medium text-red-800">
+                          Membresías Vencidas ({dashboard.membersExpiredOverdue.length})
+                        </h3>
+                      </div>
+                      <div className="space-y-3 max-h-64 overflow-y-auto">
+                        {dashboard.membersExpiredOverdue.map((member) => {
+                          const daysOverdue = Math.abs(getDaysUntilExpiry(member.nextPaymentDate || ''));
+                          return (
+                            <div key={member.id} className="flex justify-between items-center p-3 bg-red-50 rounded-lg border border-red-200">
+                              <div>
+                                <p className="font-medium text-red-900">
+                                  {member.firstName} {member.lastName}
+                                </p>
+                                <p className="text-sm text-red-700">
+                                  Doc: {member.document}
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-sm font-medium text-red-800">
+                                  Vencido hace {daysOverdue} día{daysOverdue !== 1 ? 's' : ''}
+                                </p>
+                                <p className="text-xs text-red-600">
+                                  {formatCurrency(Number(member.monthlyFee))}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
-                  ))}
+                  )}
+
+                  {/* Próximos a vencer */}
+                  {dashboard.membersExpiringSoon && dashboard.membersExpiringSoon.length > 0 && (
+                    <div className="card border-l-4 border-yellow-500">
+                      <div className="flex items-center mb-4">
+                        <div className="text-2xl mr-3">⏰</div>
+                        <h3 className="text-lg font-medium text-yellow-800">
+                          Próximos a Vencer ({dashboard.membersExpiringSoon.length})
+                        </h3>
+                      </div>
+                      <div className="space-y-3 max-h-64 overflow-y-auto">
+                        {dashboard.membersExpiringSoon.map((member) => {
+                          const daysUntil = getDaysUntilExpiry(member.nextPaymentDate || '');
+                          return (
+                            <div key={member.id} className="flex justify-between items-center p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                              <div>
+                                <p className="font-medium text-yellow-900">
+                                  {member.firstName} {member.lastName}
+                                </p>
+                                <p className="text-sm text-yellow-700">
+                                  Doc: {member.document}
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-sm font-medium text-yellow-800">
+                                  {daysUntil === 0 ? 'Hoy' : 
+                                   daysUntil === 1 ? 'Mañana' : 
+                                   `En ${daysUntil} días`}
+                                </p>
+                                <p className="text-xs text-yellow-600">
+                                  {formatCurrency(Number(member.monthlyFee))}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
+
+                {/* Distribución de pagos por tipo */}
+                {dashboard.paymentsByType && dashboard.paymentsByType.length > 0 && (
+                  <div className="card mb-8">
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">
+                      📈 Distribución de Pagos por Tipo (Este Mes)
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {dashboard.paymentsByType.map((type) => (
+                        <div key={type.paymentType} className="bg-gray-50 p-4 rounded-lg">
+                          <h4 className="font-medium text-gray-900">
+                            {getPaymentTypeName(type.paymentType)}
+                          </h4>
+                          <p className="text-2xl font-bold text-blue-600">
+                            {formatCurrency(Number(type._sum.amount || 0))}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            {type._count.id} pago{type._count.id !== 1 ? 's' : ''}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
 
             {/* Sección de pagos recientes */}
             {dashboard?.recentPayments && dashboard.recentPayments.length > 0 && (
               <div className="card">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">
-                  Pagos Recientes
-                </h3>
+                <div className="flex items-center mb-4">
+                  <div className="text-2xl mr-3">💳</div>
+                  <h3 className="text-lg font-medium text-gray-900">
+                    Pagos Recientes
+                  </h3>
+                </div>
                 <div className="overflow-x-auto">
-                  <table className="table">
-                    <thead>
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
                       <tr>
-                        <th>Afiliado</th>
-                        <th>Monto</th>
-                        <th>Tipo</th>
-                        <th>Fecha</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Afiliado
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Monto
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Tipo
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Fecha
+                        </th>
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="bg-white divide-y divide-gray-200">
                       {dashboard.recentPayments.map((payment) => (
-                        <tr key={payment.id}>
-                          <td>
-                            {payment.member ? 
-                              `${payment.member.firstName} ${payment.member.lastName}` : 
-                              'N/A'
-                            }
+                        <tr key={payment.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center mr-3">
+                                <span className="text-sm font-medium text-blue-600">
+                                  {payment.member ? 
+                                    (payment.member.firstName.charAt(0) + payment.member.lastName.charAt(0)).toUpperCase() : 
+                                    'N/A'
+                                  }
+                                </span>
+                              </div>
+                              <div>
+                                <div className="text-sm font-medium text-gray-900">
+                                  {payment.member ? 
+                                    `${payment.member.firstName} ${payment.member.lastName}` : 
+                                    'N/A'
+                                  }
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                  {payment.member?.document || 'N/A'}
+                                </div>
+                              </div>
+                            </div>
                           </td>
-                          <td>{formatCurrency(payment.amount)}</td>
-                          <td>
-                            <span className={`badge ${
-                              payment.paymentType === 'MONTHLY' ? 'badge-success' : 
-                              payment.paymentType === 'ANNUAL' ? 'badge-primary' :
-                              payment.paymentType === 'REGISTRATION' ? 'badge-info' :
-                              'badge-warning'
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">
+                              {formatCurrency(payment.amount)}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                              payment.paymentType === 'MONTHLY' ? 'bg-green-100 text-green-800' : 
+                              payment.paymentType === 'ANNUAL' ? 'bg-blue-100 text-blue-800' :
+                              payment.paymentType === 'REGISTRATION' ? 'bg-purple-100 text-purple-800' :
+                              payment.paymentType === 'PENALTY' ? 'bg-red-100 text-red-800' :
+                              'bg-gray-100 text-gray-800'
                             }`}>
                               {getPaymentTypeName(payment.paymentType)}
                             </span>
                           </td>
-                          <td>{new Date(payment.paymentDate).toLocaleDateString()}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {formatDate(payment.paymentDate)}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
+                </div>
+                <div className="mt-4 flex justify-center">
+                  <a 
+                    href="/payments" 
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-blue-600 bg-blue-100 hover:bg-blue-200 transition-colors"
+                  >
+                    Ver todos los pagos
+                    <svg className="ml-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </a>
                 </div>
               </div>
             )}
@@ -362,3 +572,50 @@ function DashboardPage() {
 }
 
 export default DashboardPage;
+
+// Estilos CSS adicionales
+const styles = `
+  .card {
+    @apply bg-white rounded-lg shadow-md p-6 border border-gray-200 hover:shadow-lg transition-shadow duration-200;
+  }
+  
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+  
+  .badge-success {
+    @apply bg-green-100 text-green-800;
+  }
+  
+  .badge-primary {
+    @apply bg-blue-100 text-blue-800;
+  }
+  
+  .badge-info {
+    @apply bg-cyan-100 text-cyan-800;
+  }
+  
+  .badge-warning {
+    @apply bg-yellow-100 text-yellow-800;
+  }
+  
+  .table {
+    @apply min-w-full divide-y divide-gray-200;
+  }
+  
+  .table th {
+    @apply px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50;
+  }
+  
+  .table td {
+    @apply px-6 py-4 whitespace-nowrap text-sm text-gray-900;
+  }
+`;
+
+// Inyectar estilos si no existen
+if (typeof document !== 'undefined' && !document.getElementById('dashboard-styles')) {
+  const styleSheet = document.createElement('style');
+  styleSheet.id = 'dashboard-styles';
+  styleSheet.textContent = styles;
+  document.head.appendChild(styleSheet);
+}
