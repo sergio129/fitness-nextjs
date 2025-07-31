@@ -163,8 +163,9 @@ const Payments: React.FC = () => {
         setPayments(response);
         setTotalPages(1);
       } else {
-        setPayments(response.data || response.payments || []);
-        setTotalPages(Math.ceil((response.pagination?.total || response.total || 0) / (response.pagination?.limit || 20)));
+        const responseData = response as any;
+        setPayments(responseData.data || responseData.payments || []);
+        setTotalPages(Math.ceil((responseData.pagination?.total || responseData.total || 0) / (responseData.pagination?.limit || 20)));
       }
     } catch (error) {
       console.error('Error cargando pagos:', error);

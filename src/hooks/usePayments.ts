@@ -13,7 +13,7 @@ export function usePayments(params?: any) {
     try {
       setLoading(true)
       const response = await apiClient.getPayments(params)
-      setData(response)
+      setData(response as PaginationResponse<Payment>)
       setError(null)
     } catch (err: any) {
       setError(err.message)
@@ -58,7 +58,7 @@ export function usePayments(params?: any) {
   }
 
   return {
-    payments: data?.payments || [],
+    payments: data?.data || [],
     pagination: data?.pagination,
     loading,
     error,

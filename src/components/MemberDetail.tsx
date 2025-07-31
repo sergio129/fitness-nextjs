@@ -20,7 +20,8 @@ const MemberDetail: React.FC<MemberDetailProps> = ({ member, onClose, onEdit }) 
     try {
       setLoadingPayments(true);
       const response = await apiClient.request(`/payments?memberId=${member.id}&limit=50`);
-      setPayments(response.payments || []);
+      const responseData = response as any;
+      setPayments(responseData.payments || []);
     } catch (error) {
       console.error('Error cargando pagos:', error);
       toast.error('Error al cargar el historial de pagos');

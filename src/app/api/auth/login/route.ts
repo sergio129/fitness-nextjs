@@ -14,14 +14,14 @@ export async function POST(request: NextRequest) {
 
     if (!username || !password) {
       return NextResponse.json(
-        { error: "Username y password son requeridos" },
+        { error: "Email y password son requeridos" },
         { status: 400 }
       )
     }
 
     // Buscar el admin en la base de datos
     const admin = await prisma.admin.findUnique({
-      where: { username }
+      where: { email: username }
     })
 
     if (!admin) {
@@ -42,10 +42,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Generar token JWT
+    if (!JWT_SECRET) {
+      throw new Error("JWT_SECRET no está configurado")
+    }
+
     const token = jwt.sign(
       { 
         adminId: admin.id, 
-        username: admin.username 
+        email: admin.email 
       },
       JWT_SECRET,
       { expiresIn: "7d" }
@@ -55,9 +59,8 @@ export async function POST(request: NextRequest) {
       token,
       admin: {
         id: admin.id,
-        username: admin.username,
-        firstName: admin.firstName,
-        lastName: admin.lastName
+        email: admin.email,
+        name: admin.name
       }
     })
 

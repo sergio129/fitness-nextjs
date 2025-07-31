@@ -17,7 +17,7 @@ function verifyToken(request: NextRequest) {
   const token = authHeader.substring(7)
   
   try {
-    return jwt.verify(token, JWT_SECRET) as any
+    return jwt.verify(token, JWT_SECRET!) as any
   } catch (error) {
     throw new Error("Token inválido")
   }

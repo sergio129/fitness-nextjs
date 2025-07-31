@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     const token = authHeader.substring(7)
     
     try {
-      const decoded = jwt.verify(token, JWT_SECRET) as any
+      const decoded = jwt.verify(token, JWT_SECRET!) as any
       
       return NextResponse.json({
         isValid: true,
