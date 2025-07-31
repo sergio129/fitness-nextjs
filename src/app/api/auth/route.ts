@@ -32,14 +32,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log('Searching for admin with email:', email)
-    // Buscar admin por email
-    const admin = await prisma.admin.findUnique({
+    console.log('Searching for user with email:', email)
+    // Buscar usuario por email
+    const user = await prisma.user.findUnique({
       where: { email }
     })
-    console.log('Admin found:', !!admin)
+    console.log('User found:', !!user)
 
-    if (!admin) {
+    if (!user) {
       return NextResponse.json(
         { message: 'Credenciales inválidas' },
         { status: 401 }
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
 
     // Verificar contraseña
     console.log('Verifying password...')
-    const isValidPassword = await bcrypt.compare(password, admin.password)
+    const isValidPassword = await bcrypt.compare(password, user.password)
     console.log('Password valid:', isValidPassword)
     if (!isValidPassword) {
       return NextResponse.json(
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     console.log('JWT secret available:', !!jwtSecret)
 
     const token = jwt.sign(
-      { adminId: admin.id },
+      { userId: user.id, name: user.name, email: user.email, role: user.role },
       jwtSecret,
       { expiresIn: '7d' }
     )
@@ -72,10 +72,12 @@ export async function POST(request: NextRequest) {
     console.log('=== AUTH ENDPOINT SUCCESS ===')
     return NextResponse.json({
       token,
-      admin: {
-        id: admin.id,
-        name: admin.name,
-        email: admin.email
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        active: user.active
       }
     })
 

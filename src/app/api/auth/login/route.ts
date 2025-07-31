@@ -15,12 +15,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Buscar el admin en la base de datos
-    const admin = await prisma.admin.findUnique({
-      where: { email: email }
+    // Buscar el usuario en la base de datos
+    const user = await prisma.user.findUnique({
+      where: { email }
     })
 
-    if (!admin) {
+    if (!user) {
       return NextResponse.json(
         { error: "Credenciales inválidas" },
         { status: 401 }
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verificar la contraseña
-    const isValidPassword = await bcrypt.compare(password, admin.password)
+    const isValidPassword = await bcrypt.compare(password, user.password)
 
     if (!isValidPassword) {
       return NextResponse.json(
@@ -42,8 +42,9 @@ export async function POST(request: NextRequest) {
 
     const token = jwt.sign(
       { 
-        adminId: admin.id, 
-        email: admin.email 
+        userId: user.id, 
+        email: user.email, 
+        role: user.role
       },
       jwtSecret,
       { expiresIn: "7d" }
@@ -51,10 +52,11 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       token,
-      admin: {
-        id: admin.id,
-        email: admin.email,
-        name: admin.name
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role
       }
     })
 

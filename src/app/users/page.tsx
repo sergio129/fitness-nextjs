@@ -20,6 +20,10 @@ export default function UsersPage() {
       })
   }, [])
 
+  const { logout } = require('@/contexts/AuthContext');
+  const handleLogout = () => {
+    logout();
+  };
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Sidebar desktop */}
@@ -67,13 +71,19 @@ export default function UsersPage() {
               <div className="flex items-center">
                 <div className="ml-3">
                   <p className="text-sm font-medium text-gray-700 group-hover:text-gray-900">Admin</p>
-                  <button className="text-xs font-medium text-gray-500 group-hover:text-gray-700">Cerrar Sesión</button>
+                  <button 
+                    onClick={handleLogout}
+                    className="text-xs font-medium text-gray-500 group-hover:text-gray-700"
+                  >
+                    Cerrar Sesión
+                  </button>
                 </div>
               </div>
             </button>
           </div>
         </div>
       </div>
+      
       {/* Contenido principal */}
       <div className="md:pl-64 flex flex-col flex-1">
         <div className="py-10">
