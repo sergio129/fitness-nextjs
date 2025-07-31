@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react"
 import { ProtectedRoute } from "@/components/ProtectedRoute"
+import { AuthWrapper } from "@/components/AuthWrapper"
 import { apiClient } from "@/utils/api"
-import { Bell, AlertTriangle, Calendar, DollarSign, Users } from "lucide-react"
+import { Bell, AlertTriangle, Calendar, Users } from "lucide-react"
 
 // Layout con navegación completa como el repositorio original
 function AlertsLayout({ children }: { children: React.ReactNode }) {
@@ -217,26 +218,29 @@ export default function AlertsPage() {
 
   if (loading) {
     return (
-      <ProtectedRoute>
-        <AlertsLayout>
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
-          </div>
-        </AlertsLayout>
-      </ProtectedRoute>
+      <AuthWrapper>
+        <ProtectedRoute>
+          <AlertsLayout>
+            <div className="flex justify-center items-center h-64">
+              <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
+            </div>
+          </AlertsLayout>
+        </ProtectedRoute>
+      </AuthWrapper>
     )
   }
 
   return (
-    <ProtectedRoute>
-      <AlertsLayout>
-        <div className="space-y-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Alertas</h1>
-              <p className="text-gray-600">Gestiona las notificaciones del sistema</p>
+    <AuthWrapper>
+      <ProtectedRoute>
+        <AlertsLayout>
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Alertas</h1>
+                <p className="text-gray-600">Gestiona las notificaciones del sistema</p>
+              </div>
             </div>
-          </div>
 
           {/* Filtros */}
           <div className="flex space-x-4">
@@ -372,5 +376,6 @@ export default function AlertsPage() {
         </div>
       </AlertsLayout>
     </ProtectedRoute>
+  </AuthWrapper>
   )
 }

@@ -1,6 +1,6 @@
 ﻿"use client"
 
-import { useState, useEffect, useCallback, useMemo } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { apiClient } from "@/utils/api"
 import { Member } from "@/types"
 
@@ -9,16 +9,10 @@ export function useMembers(params?: any) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Memoizar los parámetros para evitar re-renders innecesarios
-  const memoizedParams = useMemo(() => {
-    return params ? JSON.stringify(params) : null
-  }, [params])
-
   const fetchMembers = useCallback(async () => {
     try {
       setLoading(true)
-      const parsedParams = memoizedParams ? JSON.parse(memoizedParams) : undefined
-      const response = await apiClient.getMembers(parsedParams)
+      const response = await apiClient.getMembers(params)
       // Manejar tanto respuesta paginada como array simple
       const membersData = Array.isArray(response) ? response : ((response as any)?.members || [])
       setMembers(membersData)
@@ -28,7 +22,7 @@ export function useMembers(params?: any) {
     } finally {
       setLoading(false)
     }
-  }, [memoizedParams])
+  }, []) // Eliminar params de las dependencias para evitar bucle infinito
 
   useEffect(() => {
     fetchMembers()
