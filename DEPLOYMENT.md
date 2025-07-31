@@ -24,6 +24,7 @@ DATABASE_URL=tu-url-de-base-de-datos-postgresql
 JWT_SECRET=tu-jwt-secret-muy-seguro
 NEXTAUTH_SECRET=tu-nextauth-secret-muy-seguro  
 NEXTAUTH_URL=https://tu-dominio.vercel.app
+NEXT_PUBLIC_APP_URL=https://tu-dominio.vercel.app
 ```
 
 ### 3. Para Base de Datos en Producción
