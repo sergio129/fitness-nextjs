@@ -88,14 +88,15 @@ export async function POST(request: NextRequest) {
       nodeEnv: process.env.NODE_ENV
     })
     
-    // Proporcionar más detalles del error siempre para debugging
+    // Mostrar detalles del error para debugging (temporal)
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     const detailedMessage = `Error interno del servidor: ${errorMessage}`
     
     return NextResponse.json(
       { 
         message: detailedMessage,
-        error: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+        error: errorMessage, // Siempre mostrar para debugging
+        stack: error instanceof Error ? error.stack : undefined
       },
       { status: 500 }
     )
