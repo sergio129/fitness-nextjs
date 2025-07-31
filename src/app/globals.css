@@ -170,10 +170,22 @@ body {
   border: 1px solid rgb(209 213 219);
   border-radius: 0.5rem;
   font-size: 0.875rem;
+  background-color: white;
+  color: rgb(17 24 39);
 }
 
 .input:focus {
   outline: none;
   border-color: rgb(59 130 246);
   box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.5);
+}
+
+/* Estilos adicionales para inputs, selects y textareas */
+input, select, textarea {
+  background-color: white !important;
+  color: rgb(17 24 39) !important;
+}
+
+input::placeholder, textarea::placeholder {
+  color: rgb(156 163 175) !important;
 }
