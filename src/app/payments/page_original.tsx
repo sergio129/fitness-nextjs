@@ -141,6 +141,7 @@ function PaymentsLayout({ children }: { children: React.ReactNode }) {
 
 const Payments: React.FC = () => {
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
@@ -172,12 +173,16 @@ const Payments: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [currentPage]); // Remover getPayments para evitar bucle infinito
+  }, [currentPage, getPayments]);
 
   useEffect(() => {
     loadPayments();
-    // fetchMembers(); // Comentado: useMembers() ya hace fetch automáticamente
-  }, []); // Eliminar dependencias para evitar bucle infinito
+    fetchMembers();
+  }, [loadPayments, fetchMembers]);
+
+  useEffect(() => {
+    setMembers(allMembers);
+  }, [allMembers]);
 
   const handleNewPayment = (member: Member) => {
     setSelectedMember(member);
@@ -228,7 +233,7 @@ const Payments: React.FC = () => {
     );
   });
 
-  const filteredMembers = allMembers.filter((member: Member) => {
+  const filteredMembers = members.filter(member => {
     if (!searchTerm) return true;
     
     const searchLower = searchTerm.toLowerCase();
