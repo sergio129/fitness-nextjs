@@ -29,12 +29,19 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const search = searchParams.get("search") || ""
+    const memberId = searchParams.get("memberId")
     const page = parseInt(searchParams.get("page") || "1")
     const limit = parseInt(searchParams.get("limit") || "10")
 
     const where: any = {}
 
-    if (search) {
+    // Filtrar por miembro específico si se proporciona memberId
+    if (memberId) {
+      where.memberId = memberId
+    }
+
+    // Si hay búsqueda de texto y NO hay filtro por memberId específico
+    if (search && !memberId) {
       where.member = {
         OR: [
           { firstName: { contains: search, mode: "insensitive" } },
